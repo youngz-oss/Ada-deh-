@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeoAi Soft</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<style>
+:root{
+--bg:#050505;
+--text:#f5f5f7;
+--accent:#00f0ff;
+}
+
+body{
+background:
+radial-gradient(circle at 20% 10%, rgba(0,240,255,0.15), transparent 40%),
+radial-gradient(circle at 80% 90%, rgba(0,240,255,0.1), transparent 40%),
+#050505;
+color:var(--text);
+font-family:-apple-system;
+overflow:hidden;
+}
+
+/* SPLASH */
+#splash{
+position:fixed;
+inset:0;
+display:flex;
+align-items:center;
+justify-content:center;
+background:#050505;
+z-index:999;
+}
+.logo{
+font-size:28px;
+text-shadow:0 0 20px #00f0ff,0 0 40px #00f0ff;
+animation:pulse 1.6s infinite;
+}
+@keyframes pulse{
+0%{transform:scale(.95);opacity:.6;}
+50%{transform:scale(1.08);}
+100%{transform:scale(.95);opacity:.6;}
+}
+.splash-out{
+opacity:0;
+filter:blur(12px);
+transition:.6s;
+}
+
+/* SIDEBAR */
+.sidebar{
+position:fixed;
+top:0;
+left:0;
+width:260px;
+height:100%;
+background:#0a0a0a;
+transform:translateX(-100%);
+transition:.3s;
+z-index:50;
+box-shadow:0 0 30px rgba(0,240,255,0.2);
+}
+
+#overlay{
+position:fixed;
+inset:0;
+background:rgba(0,0,0,.5);
+backdrop-filter:blur(10px);
+opacity:0;
+pointer-events:none;
+transition:.3s;
+}
+#overlay.show{
+opacity:1;
+pointer-events:auto;
+}
+
+/* CHAT */
+.chat-row{display:flex;gap:10px;}
+.chat-bubble{
+max-width:75%;
+padding:10px;
+border-radius:14px;
+box-shadow:0 0 10px rgba(0,240,255,0.15);
+}
+.avatar{
+width:34px;height:34px;border-radius:50%;
+box-shadow:0 0 10px #00f0ff;
+}
+
+/* TAB */
+.tab-btn{
+font-size:13px;
+opacity:.6;
+}
+.tab-btn.active{
+opacity:1;
+text-shadow:0 0 10px #00f0ff;
+}
+
+.hide-scroll::-webkit-scrollbar{display:none;}
+</style>
+</head>
+
+<body>
+
+<div id="splash"><h1 class="logo">Welcome NeoAi</h1></div>
+<div id="overlay" onclick="closeSidebar()"></div>
+
+<script>
+const API_KEY = "";
+const MODEL = "llama-3.3-70b-versatile";
+
+const AVATAR_URL="https://files.catbox.moe/q8plym.png";
+const BANNER_URL="https://files.catbox.moe/wj6s5i.jpg";
+</script>
+
+<!-- SIDEBAR -->
+<div id="sidebar" class="sidebar p-4">
+<button onclick="newChat()" class="mb-3">Obrolan New</button>
+</div>
+
+<div class="h-screen flex flex-col">
+
+<header class="flex items-center justify-between px-4 py-3 border-b border-white/10">
+<div class="flex gap-3">
+<button onclick="openSidebar()">☰</button>
+<h1>NeoAi</h1>
+</div>
+
+<div class="flex gap-3">
+<button class="tab-btn active" onclick="switchTab(event,'home')">⌂Home</button>
+<button class="tab-btn" onclick="switchTab(event,'info')">💬Info</button>
+</div>
+</header>
+
+<!-- HOME -->
+<div id="homePage" class="flex-1 flex flex-col">
+<main id="chat" class="flex-1 overflow-y-auto p-4 flex flex-col gap-3 hide-scroll"></main>
+
+<div class="p-3 flex gap-2">
+<textarea id="input" class="flex-1 bg-[#121214] p-2 rounded"></textarea>
+<button onclick="send()" class="bg-cyan-400 px-3 rounded">Send</button>
+</div>
+</div>
+
+<!-- INFO -->
+<div id="infoPage" class="hidden flex-1 p-4">
+<img id="banner" class="w-full h-40 object-cover rounded mb-3">
+<p>
+NeoAi dibuat oleh Developer Zyyn Yang Baik Hati<br><br>
+
+📌 <b>Fitur:</b><br>
+- untuk sekarang bisa buat ngobrol aja untuk kedepannya
+Insyaallah update 
+
+📞 <b>Contact:</b><br>
+@zyynnono<br><br>
+
+💳 <b>Credit:</b><br>
+Groq API<br>
+Zyyn Nono<br>
+</p>
+</div>
+
+</div>
+
+<script>
+banner.src = BANNER_URL;
+
+/* SPLASH */
+setTimeout(()=>{
+splash.classList.add("splash-out");
+setTimeout(()=>splash.remove(),600);
+},1500);
+
+/* SIDEBAR */
+function openSidebar(){
+sidebar.style.transform="translateX(0)";
+overlay.classList.add("show");
+}
+function closeSidebar(){
+sidebar.style.transform="translateX(-100%)";
+overlay.classList.remove("show");
+}
+
+/* TAB */
+function switchTab(e,tab){
+homePage.classList.toggle("hidden",tab!=="home");
+infoPage.classList.toggle("hidden",tab!=="info");
+
+document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+e.target.classList.add("active");
+}
+
+/* LIMIT */
+const LIMIT=20;
+function getCount(){
+return parseInt(localStorage.getItem("count")||"0");
+}
+function addCount(){
+localStorage.setItem("count",getCount()+1);
+}
+function isLimit(){
+return getCount()>=LIMIT;
+}
+
+/* 🔥 TOPIC DETECTION */
+function getTopic(text){
+text = text.toLowerCase();
+
+if(text.includes("code")||text.includes("html")) return "coding";
+if(text.includes("game")) return "game";
+if(text.includes("ai")) return "ai";
+return "general";
+}
+
+/* SAVE CHAT */
+function saveChat(topic,data){
+localStorage.setItem("chat_"+topic, JSON.stringify(data));
+}
+
+function loadChat(topic){
+return JSON.parse(localStorage.getItem("chat_"+topic)||"[]");
+}
+
+/* CHAT UI */
+function addMessage(role,text){
+const row=document.createElement('div');
+row.className="chat-row";
+
+const bubble=document.createElement('div');
+bubble.className="chat-bubble";
+
+if(role==='ai'){
+const img=document.createElement('img');
+img.src=AVATAR_URL;
+img.className="avatar";
+row.appendChild(img);
+}else{
+row.style.justifyContent="flex-end";
+}
+
+bubble.innerHTML=marked.parse(text);
+row.appendChild(bubble);
+chat.appendChild(row);
+
+chat.scrollTop=chat.scrollHeight;
+
+return bubble;
+}
+
+/* SEND */
+async function send(){
+
+if(isLimit()){
+addMessage("ai","Limit chat habis (20)");
+return;
+}
+
+const text=input.value.trim();
+if(!text) return;
+
+input.value="";
+addMessage("user",text);
+addCount();
+
+const topic = getTopic(text);
+let history = loadChat(topic);
+
+history.push({role:"user",content:text});
+
+try{
+const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{
+method:"POST",
+headers:{
+"Content-Type":"application/json",
+"Authorization":"Bearer "+API_KEY
+},
+body:JSON.stringify({
+model:MODEL,
+messages:history
+})
+});
+
+const data=await res.json();
+
+if(!data.choices){
+addMessage("ai","❌ "+JSON.stringify(data,null,2));
+return;
+}
+
+const reply=data.choices[0].message.content;
+
+history.push({role:"assistant",content:reply});
+saveChat(topic,history);
+
+addMessage("ai",reply);
+
+}catch(e){
+addMessage("ai","Error: "+e.message);
+}
+}
+
+/* ENTER */
+input.addEventListener("keydown",(e)=>{
+if(e.key==="Enter"){
+e.preventDefault();
+send();
+}
+});
+
+function newChat(){
+chat.innerHTML="";
+}
+</script>
+
+</body>
+</html>
